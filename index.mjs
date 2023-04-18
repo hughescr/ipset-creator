@@ -1,6 +1,6 @@
+#!/usr/bin/env node
 // Fetch a file from the URL https://ipv4.fetus.jp/ipv4bycc-cidr.txt into memory
 // and parse it into a list of CIDR blocks.
-
 
 import fetch from 'node-fetch';
 import { merge } from 'cidr-tools';
