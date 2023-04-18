@@ -6,7 +6,18 @@ import fetch from 'node-fetch';
 import { merge } from 'cidr-tools';
 import { readFile } from 'fs/promises';
 import _ from 'lodash';
+import { Command } from 'commander';
+const program = new Command();
 
+program
+    .description('Generate an ipset file from published CIDR lists')
+    .option('-r, --replace-existing', 'Replace existing ipsets with new ones with no downtime. This will load into temporary ipsets and then swap them in place.');
+
+program.parse(process.argv);
+const options = program.opts();
+
+const replaceExistingFlag = options.replaceExisting;
+const replaceExistingSuffix = replaceExistingFlag ? '-new' : '';
 const contactInfo = 'Fetched for Craig Hughes <craig.fetus@rungie.com>';
 const url = 'https://ipv4.fetus.jp/ipv4bycc-cidr.txt';
 const cidrList = {};
@@ -319,35 +330,40 @@ const makeIpSet = (name, cidr) => {
     const africaCidr = merge(_.flatten(_.map(africaCodes, code => cidrList[code] || [])));
 
     // Export continents in `ipset save` format
-    console.log(`create north-america-new hash:net family inet hashsize ${hashSize(northAmericaCidr)} maxelem 65536`);
-    makeIpSet('north-america-new', northAmericaCidr);
-    console.log('swap north-america north-america-new');
-    console.log('destroy north-america-new');
-    console.log(`create south-america-new hash:net family inet hashsize ${hashSize(southAmericaCidr)} maxelem 65536`);
-    makeIpSet('south-america-new', southAmericaCidr);
-    console.log('swap south-america south-america-new');
-    console.log('destroy south-america-new');
-    console.log(`create europe-new hash:net family inet hashsize ${hashSize(europeCidr)} maxelem 65536`);
-    makeIpSet('europe-new', europeCidr);
-    console.log('swap europe europe-new');
-    console.log('destroy europe-new');
-    console.log(`create asia-new hash:net family inet hashsize ${hashSize(asiaCidr)} maxelem 65536`);
-    makeIpSet('asia-new', asiaCidr);
-    console.log('swap asia asia-new');
-    console.log('destroy asia-new');
-    console.log(`create oceania-new hash:net family inet hashsize ${hashSize(oceaniaCidr)} maxelem 65536`);
-    makeIpSet('oceania-new', oceaniaCidr);
-    console.log('swap oceania oceania-new');
-    console.log('destroy oceania-new');
-    console.log(`create africa-new hash:net family inet hashsize ${hashSize(africaCidr)} maxelem 65536`);
-    makeIpSet('africa-new', africaCidr);
-    console.log('swap africa africa-new');
-    console.log('destroy africa-new');
+    console.log(`create north-america${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(northAmericaCidr)} maxelem 65536`);
+    makeIpSet(`north-america${replaceExistingSuffix}`, northAmericaCidr);
+    console.log(`create south-america${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(southAmericaCidr)} maxelem 65536`);
+    makeIpSet(`south-america${replaceExistingSuffix}`, southAmericaCidr);
+    console.log(`create europe${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(europeCidr)} maxelem 65536`);
+    makeIpSet(`europe${replaceExistingSuffix}`, europeCidr);
+    console.log(`create asia${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(asiaCidr)} maxelem 65536`);
+    makeIpSet(`asia${replaceExistingSuffix}`, asiaCidr);
+    console.log(`create oceania${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(oceaniaCidr)} maxelem 65536`);
+    makeIpSet(`oceania${replaceExistingSuffix}`, oceaniaCidr);
+    console.log(`create africa${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(africaCidr)} maxelem 65536`);
+    makeIpSet(`africa${replaceExistingSuffix}`, africaCidr);
 
     _.forEach(cidrList, (cidr, code) => {
-        console.log(`create ${code}-new hash:net family inet hashsize ${hashSize(cidr) } maxelem 65536`);
-        makeIpSet(`${code}-new`, cidr);
-        console.log(`swap ${code} ${code}-new`);
-        console.log(`destroy ${code}-new`);
+        console.log(`create ${code}${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(cidr) } maxelem 65536`);
+        makeIpSet(`${code}${replaceExistingSuffix}`, cidr);
     });
+
+    if (replaceExistingFlag) {
+        console.log('swap north-america north-america-new');
+        console.log('destroy north-america-new');
+        console.log('swap south-america south-america-new');
+        console.log('destroy south-america-new');
+        console.log('swap europe europe-new');
+        console.log('destroy europe-new');
+        console.log('swap asia asia-new');
+        console.log('destroy asia-new');
+        console.log('swap oceania oceania-new');
+        console.log('destroy oceania-new');
+        console.log('swap africa africa-new');
+        console.log('destroy africa-new');
+        _.forEach(cidrList, (cidr, code) => {
+            console.log(`swap ${code} ${code}-new`);
+            console.log(`destroy ${code}-new`);
+        });
+    }
 })();

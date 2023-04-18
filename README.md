@@ -51,6 +51,18 @@ TR
 UM
 ```
 
+## Subsequent updating
+
+After you have set up the ipsets and are using them in iptables, you do not want to just remove them, and ipset won't let you anyway.  What you want to do is load new ipsets, then use `ipset swap` to activate the new sets once they're fully loaded. This will prevent any problems where you temporary lower your shields during the update and suddenly the Russian spammers nuke you. To do this update, simply:
+
+```
+ipset restore -f <(node index.mjs -r)
+```
+
+the `-r` or `--replace-existing` will generate ipset commands to load everything and then swap for the existing sets, and then nuke those now-outdated sets after the swap.
+
+*NOTE: if the original ipsets did not exist then this will fail*
+
 ## Details
 
 The script fetches https://ipv4.fetus.jp/ipv4bycc-cidr.txt (which is a redirect to the most current list).  This list is refreshed every 24 hours with the latest RIR data.
