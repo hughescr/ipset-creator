@@ -1,0 +1,11 @@
+# /lib/systemd/system/ipset-creator.service
+[Unit]
+Description=IPSet Country/Continent List Importer
+Documentation=file:///usr/share/doc/ipset-creator/README.md
+Documentation=https://github.com/hughescr/ipset-creator
+Requires=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ipset list -n -q north-america >/dev/null && /usr/sbin/ipset restore -f <(/usr/bin/node /usr/local/share/.config/yarn/global/node_modules/ipset-creator/index.mjs -r) || /usr/sbin/ipset restore -f <(/usr/bin/node /usr/local/share/.config/yarn/global/node_modules/ipset-creator/index.mjs)
+PrivateTmp=true

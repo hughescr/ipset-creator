@@ -1,0 +1,11 @@
+# /lib/systemd/system/ipset-creator.timer
+[Unit]
+Description=Run ipset-creator daily to update ipsets
+
+[Timer]
+OnCalendar=*-*-* 00,12:00:00
+RandomizedDelaySec=43200
+Persistent=true
+
+[Install]
+WantedBy=timers.target
