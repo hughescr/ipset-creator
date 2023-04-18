@@ -6,5 +6,5 @@ Requires=network-online.target
 After=network-online.target
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/ipset list -n -q north-america >/dev/null && /usr/sbin/ipset restore -f <($(/usr/bin/yarn global bin)/ipset-creator -r) || /usr/sbin/ipset restore -f <($(/usr/bin/yarn global bin)/ipset-creator)
+ExecStart=/usr/bin/bash /usr/local/share/.config/yarn/global/node_modules/ipset-creator/systemd-scripts/ipset-creator.sh
 PrivateTmp=true
