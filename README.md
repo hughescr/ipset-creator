@@ -8,7 +8,24 @@ This set of scripts will:
 2. Build those into linux ipset commands for each country and each continent
 3. Create those ipsets as `xyz-new` and then once fully created, swap them into `xyz`, and then delete `xyz-new`.  In this way, you can update a live running system with no downtime.
 
-## Then what?
+## Installation
+
+You can install on Ubuntu thus:
+
+```
+# Install nodejs and yarn
+apt install nodejs
+npm -g install yarn
+
+# Install ipset-creator globally
+yarn global add ipset-creator
+
+# Optionally install systemd timer to refresh lists daily
+ln -s $(yarn global dir)/node_modules/ipset-creator/systemd-scripts /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now ipset-creator.timer
+
+## Manual runs
 
 You can actually load all the ipsets into the kernel by doing something like this:
 
