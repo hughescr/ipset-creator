@@ -10,7 +10,13 @@ This set of scripts will:
 
 ## Then what?
 
-Well, once you have the ipsets built, you can use them for iptables chains, such as:
+You can actually load all the ipsets into the kernel by doing something like this:
+
+```
+ipset restore -f <(node index.mjs)
+```
+
+Then, once you have the ipsets in the kernel, you can use them for iptables chains, such as:
 
 ```
 iptables-A LOG_AND_REJECT -m limit --limit 5/min -j LOG --log-prefix "reject bad guy: " --log-level 7 # Set up a rule to reject bad guys
