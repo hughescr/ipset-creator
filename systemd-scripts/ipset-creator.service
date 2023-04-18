@@ -1,7 +1,6 @@
 # /lib/systemd/system/ipset-creator.service
 [Unit]
 Description=IPSet Country/Continent List Importer
-Documentation=file:///usr/share/doc/ipset-creator/README.md
 Documentation=https://github.com/hughescr/ipset-creator
 Requires=network-online.target
 After=network-online.target
