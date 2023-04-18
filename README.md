@@ -24,6 +24,7 @@ yarn global add ipset-creator
 ln -s $(yarn global dir)/node_modules/ipset-creator/systemd-scripts /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now ipset-creator.timer
+```
 
 ## Manual runs
 
