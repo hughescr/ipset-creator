@@ -19,7 +19,7 @@ ipset restore -f <(node index.mjs)
 Then, once you have the ipsets in the kernel, you can use them for iptables chains, such as:
 
 ```
-iptables-A LOG_AND_REJECT -m limit --limit 5/min -j LOG --log-prefix "reject bad guy: " --log-level 7 # Set up a rule to reject bad guys
+iptables -A LOG_AND_REJECT -m limit --limit 5/min -j LOG --log-prefix "reject bad guy: " --log-level 7 # Set up a rule to reject bad guys
 iptables -A LOG_AND_REJECT -j REJECT --reject-with icmp-host-prohibited
 iptables -A INPUT -p tcp -m tcp --dport 587 -j banned_email_senders # Apply filter chain for any connection attempt on port 587 for email submission
 iptables -A banned_email_senders -m set --match-set DE src -j RETURN # Allow countries we know our users come from
