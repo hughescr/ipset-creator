@@ -1,0 +1,3 @@
+[submodule "country-ip-blocks"]
+	path = country-ip-blocks
+	url = https://github.com/herrbischoff/country-ip-blocks.git
