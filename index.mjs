@@ -2,25 +2,37 @@
 // Fetch a file from the URL https://ipv4.fetus.jp/ipv4bycc-cidr.txt into memory
 // and parse it into a list of CIDR blocks.
 
-import fetch from 'node-fetch';
 import { merge } from 'cidr-tools';
 import { readFile } from 'fs/promises';
 import _ from 'lodash';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 const program = new Command();
 
+const { default: info } = await import("./package.json", {
+    assert: {
+        type: "json",
+    },
+});
+
 program
+    .version(info.version)
     .description('Generate an ipset file from published CIDR lists')
-    .option('-r, --replace-existing', 'Replace existing ipsets with new ones with no downtime. This will load into temporary ipsets and then swap them in place.');
+    .option('-r, --replace-existing', 'Replace existing ipsets with new ones with no downtime. This will load into temporary ipsets and then swap them in place.')
+    .addOption(new Option('-i, --ip-version <num>', 'Generate an ipset file for which IP protocol version').default('4').choices(['4', '6']));
 
 program.parse(process.argv);
 const options = program.opts();
 
 const replaceExistingFlag = options.replaceExisting;
 const replaceExistingSuffix = replaceExistingFlag ? '-new' : '';
-const contactInfo = 'Fetched for Craig Hughes <craig.fetus@rungie.com>';
-const url = 'https://ipv4.fetus.jp/ipv4bycc-cidr.txt';
+const ipv6Suffix = options.ipVersion === '6' ? '-ipv6' : '';
 const cidrList = {};
+
+// Ignoring country code 'AQ' for antarctica
+// Ignoring country code 'A1' for anonymous proxies
+// Ignoring country code 'A2' for satellite providers
+// Ignoring country code 'ZZ' for unknown
+
 const africaCodes = [
     'AO',
     'BF',
@@ -88,6 +100,7 @@ const asiaCodes = [
     'AE',
     'AF',
     'AM',
+    'AP', // Generic "Asia-Pacific" country code for region
     'AZ',
     'BD',
     'BH',
@@ -162,6 +175,7 @@ const europeCodes = [
     'DK',
     'EE',
     'ES',
+    'EU', // Generic "Europe" country code for region
     'FI',
     'FO',
     'FR',
@@ -306,10 +320,10 @@ const makeIpSet = (name, cidr) => {
     });
 };
 
+const directory = `country-ip-blocks/ipv${options.ipVersion}`;
+
 (async () => {
-    const response = await fetch(url, { headers: { 'User-Agent': contactInfo }});
-    const text = await response.text();
-    // const text = await readFile('ipv4bycc-cidr.txt', { encoding: 'utf8' } );
+    const text = await readFile(`sorted-from-git-ipv${options.ipVersion}.txt`, { encoding: 'utf8' } );
     const lines = text.split('\n');
     for (const line of lines) {
         const [countryCode, cidr] = line.split('\t');
@@ -330,40 +344,40 @@ const makeIpSet = (name, cidr) => {
     const africaCidr = merge(_.flatten(_.map(africaCodes, code => cidrList[code] || [])));
 
     // Export continents in `ipset save` format
-    console.log(`create north-america${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(northAmericaCidr)} maxelem 65536`);
-    makeIpSet(`north-america${replaceExistingSuffix}`, northAmericaCidr);
-    console.log(`create south-america${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(southAmericaCidr)} maxelem 65536`);
-    makeIpSet(`south-america${replaceExistingSuffix}`, southAmericaCidr);
-    console.log(`create europe${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(europeCidr)} maxelem 65536`);
-    makeIpSet(`europe${replaceExistingSuffix}`, europeCidr);
-    console.log(`create asia${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(asiaCidr)} maxelem 65536`);
-    makeIpSet(`asia${replaceExistingSuffix}`, asiaCidr);
-    console.log(`create oceania${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(oceaniaCidr)} maxelem 65536`);
-    makeIpSet(`oceania${replaceExistingSuffix}`, oceaniaCidr);
-    console.log(`create africa${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(africaCidr)} maxelem 65536`);
-    makeIpSet(`africa${replaceExistingSuffix}`, africaCidr);
+    console.log(`create north-america${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(northAmericaCidr)} maxelem 65536`);
+    makeIpSet(`north-america${ipv6Suffix}${replaceExistingSuffix}`, northAmericaCidr);
+    console.log(`create south-america${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(southAmericaCidr)} maxelem 65536`);
+    makeIpSet(`south-america${ipv6Suffix}${replaceExistingSuffix}`, southAmericaCidr);
+    console.log(`create europe${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(europeCidr)} maxelem 65536`);
+    makeIpSet(`europe${ipv6Suffix}${replaceExistingSuffix}`, europeCidr);
+    console.log(`create asia${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(asiaCidr)} maxelem 65536`);
+    makeIpSet(`asia${ipv6Suffix}${replaceExistingSuffix}`, asiaCidr);
+    console.log(`create oceania${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(oceaniaCidr)} maxelem 65536`);
+    makeIpSet(`oceania${ipv6Suffix}${replaceExistingSuffix}`, oceaniaCidr);
+    console.log(`create africa${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6' : ''} hashsize ${hashSize(africaCidr)} maxelem 65536`);
+    makeIpSet(`africa${ipv6Suffix}${replaceExistingSuffix}`, africaCidr);
 
     _.forEach(cidrList, (cidr, code) => {
-        console.log(`create ${code}${replaceExistingSuffix} hash:net family inet hashsize ${hashSize(cidr) } maxelem 65536`);
-        makeIpSet(`${code}${replaceExistingSuffix}`, cidr);
+        console.log(`create ${code}${ipv6Suffix}${replaceExistingSuffix} hash:net family inet${options.ipVersion == '6' ? '6': ''} hashsize ${hashSize(cidr) } maxelem 65536`);
+        makeIpSet(`${code}${ipv6Suffix}${replaceExistingSuffix}`, cidr);
     });
 
     if (replaceExistingFlag) {
-        console.log('swap north-america north-america-new');
-        console.log('destroy north-america-new');
-        console.log('swap south-america south-america-new');
-        console.log('destroy south-america-new');
-        console.log('swap europe europe-new');
-        console.log('destroy europe-new');
-        console.log('swap asia asia-new');
-        console.log('destroy asia-new');
-        console.log('swap oceania oceania-new');
-        console.log('destroy oceania-new');
-        console.log('swap africa africa-new');
-        console.log('destroy africa-new');
+        console.log(`swap north-america${ipv6Suffix} north-america${ipv6Suffix}-new`);
+        console.log(`destroy north-america${ipv6Suffix}-new`);
+        console.log(`swap south-america${ipv6Suffix} south-america${ipv6Suffix}-new`);
+        console.log(`destroy south-america${ipv6Suffix}-new`);
+        console.log(`swap europe${ipv6Suffix} europe${ipv6Suffix}-new`);
+        console.log(`destroy europe${ipv6Suffix}-new`);
+        console.log(`swap asia${ipv6Suffix} asia${ipv6Suffix}-new`);
+        console.log(`destroy asia${ipv6Suffix}-new`);
+        console.log(`swap oceania${ipv6Suffix} oceania${ipv6Suffix}-new`);
+        console.log(`destroy oceania${ipv6Suffix}-new`);
+        console.log(`swap africa${ipv6Suffix} africa${ipv6Suffix}-new`);
+        console.log(`destroy africa${ipv6Suffix}-new`);
         _.forEach(cidrList, (cidr, code) => {
-            console.log(`swap ${code} ${code}-new`);
-            console.log(`destroy ${code}-new`);
+            console.log(`swap ${code}${ipv6Suffix} ${code}${ipv6Suffix}-new`);
+            console.log(`destroy ${code}${ipv6Suffix}-new`);
         });
     }
 })();
