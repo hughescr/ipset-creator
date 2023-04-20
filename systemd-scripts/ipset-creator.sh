@@ -3,7 +3,7 @@ IPSET=$(which ipset)
 YARN=$(which yarn)
 SCRIPTS_DIR=$("$YARN" global dir)/node_modules/ipset-creator/systemd-scripts
 IPSET_CREATOR=$("$YARN" global bin)/ipset-creator
-COUNTRIES_DATA_GIT_DIR=/var/opt
+COUNTRIES_DATA_GIT_DIR=/var/opt/ipset-creator
 
 cd "$COUNTRIES_DATA_GIT_DIR" || exit
 source "$SCRIPTS_DIR/build-list-from-countries.sh"
