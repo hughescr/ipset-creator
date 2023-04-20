@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Fetch a file from the URL https://ipv4.fetus.jp/ipv4bycc-cidr.txt into memory
-// and parse it into a list of CIDR blocks.
+// Fetch CIDR blocks from https://github.com/herrbischoff/country-ip-blocks
+// and parse then inject into ipsets
 
 import { merge } from 'cidr-tools';
 import { readFile } from 'fs/promises';
@@ -18,10 +18,13 @@ program
     .version(info.version)
     .description('Generate an ipset file from published CIDR lists')
     .option('-r, --replace-existing', 'Replace existing ipsets with new ones with no downtime. This will load into temporary ipsets and then swap them in place.')
+    .addOption(new Option('-4', 'Generate an ipset file for IPv4').default(true).implies({'6': false}).implies({ ipVersion: '4' }))
+    .addOption(new Option('-6', 'Generate an ipset file for IPv6').default(false).implies({'4': false}).implies({ipVersion: '6'}))
     .addOption(new Option('-i, --ip-version <num>', 'Generate an ipset file for which IP protocol version').default('4').choices(['4', '6']));
 
 program.parse(process.argv);
 const options = program.opts();
+console.error(options);
 
 const replaceExistingFlag = options.replaceExisting;
 const replaceExistingSuffix = replaceExistingFlag ? '-new' : '';
@@ -323,6 +326,7 @@ const makeIpSet = (name, cidr) => {
 const directory = `country-ip-blocks/ipv${options.ipVersion}`;
 
 (async () => {
+    // Read the files as written by the shell script that merges everything from the git repo
     const text = await readFile(`sorted-from-git-ipv${options.ipVersion}.txt`, { encoding: 'utf8' } );
     const lines = text.split('\n');
     for (const line of lines) {
