@@ -24,7 +24,6 @@ program
 
 program.parse(process.argv);
 const options = program.opts();
-console.error(options);
 
 const replaceExistingFlag = options.replaceExisting;
 const replaceExistingSuffix = replaceExistingFlag ? '-new' : '';
