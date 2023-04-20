@@ -1,6 +1,6 @@
 {
   "name": "ipset-creator",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Create IPSets for every country in the world",
   "main": "index.mjs",
   "bin": "index.mjs",
