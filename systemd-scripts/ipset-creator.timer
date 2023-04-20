@@ -3,8 +3,9 @@
 Description=Run ipset-creator daily to update ipsets
 
 [Timer]
-OnCalendar=*-*-* 00,12:00:00
-RandomizedDelaySec=43200
+OnCalendar=hourly
+RandomizedDelaySec=45min
+AccuracySec=5
 Persistent=true
 
 [Install]
