@@ -12,9 +12,9 @@
     "postversion": "git commit -m \"Bump package version to $npm_package_version\" package.json; git flow release start $npm_package_version; git flow release finish -m $npm_package_version $npm_package_version; git checkout develop; git merge master"
   },
   "dependencies": {
-    "cidr-tools": "^5.1.4",
-    "commander": "^10.0.1",
-    "lodash": "^4.17.21",
-    "node-fetch": "^3.3.1"
+    "cidr-tools": "^11.0.3",
+    "commander": "^14.0.2",
+    "lodash": "^4.17.23",
+    "node-fetch": "^3.3.2"
   }
 }
