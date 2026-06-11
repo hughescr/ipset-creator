@@ -9,7 +9,7 @@
   "license": "BSD-3-Clause-Clear",
   "private": false,
   "scripts": {
-    "postversion": "git commit -m \"Bump package version to $npm_package_version\" package.json; git flow release start $npm_package_version; git flow release finish -m $npm_package_version $npm_package_version; git checkout develop; git merge master"
+    "postversion": "git commit -m \"Bump package version to $npm_package_version\" package.json; git flow release start $npm_package_version; git flow release finish -m $npm_package_version $npm_package_version; git checkout develop; git merge main"
   },
   "dependencies": {
     "cidr-tools": "^11.0.3",
