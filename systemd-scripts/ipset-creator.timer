@@ -1,6 +1,6 @@
 # /lib/systemd/system/ipset-creator.timer
 [Unit]
-Description=Run ipset-creator daily to update ipsets
+Description=Run ipset-creator hourly to update ipsets
 
 [Timer]
 OnCalendar=hourly
