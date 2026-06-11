@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Fetch CIDR blocks from https://github.com/herrbischoff/country-ip-blocks
-// and parse then inject into ipsets
+// Read CIDR blocks from a local clone of https://github.com/ipverse/country-ip-blocks
+// (refreshed via git pull — no HTTP fetching at generation time) and emit ipset save format.
 
-import { merge } from 'cidr-tools';
-import { readFile } from 'fs/promises';
+import { mergeCidr as merge } from 'cidr-tools';
+import { readdir, readFile } from 'fs/promises';
 import _ from 'lodash';
 import { Command, Option } from 'commander';
 const program = new Command();
 
 const { default: info } = await import("./package.json", {
-    assert: {
+    with: {
         type: "json",
     },
 });
@@ -30,10 +30,12 @@ const replaceExistingSuffix = replaceExistingFlag ? '-new' : '';
 const ipv6Suffix = options.ipVersion === '6' ? '-ipv6' : '';
 const cidrList = {};
 
-// Ignoring country code 'AQ' for antarctica
-// Ignoring country code 'A1' for anonymous proxies
-// Ignoring country code 'A2' for satellite providers
-// Ignoring country code 'ZZ' for unknown
+// AQ (Antarctica) is intentionally excluded from all continent tables: it has valid IP allocations
+// but belongs to no continent geopolitically. Its per-country set is still emitted so operators
+// can reference it directly if needed.
+//
+// A1 (anonymous proxies), A2 (satellite providers), and ZZ (unknown) are not present in the
+// ipverse dataset and are therefore not in any continent table.
 
 const continents = {
     africa: [
@@ -51,7 +53,6 @@ const continents = {
         'DJ',
         'DZ',
         'EG',
-        'EH',
         'ER',
         'ET',
         'GA',
@@ -80,7 +81,6 @@ const continents = {
         'RW',
         'SC',
         'SD',
-        'SH',
         'SL',
         'SN',
         'SO',
@@ -88,7 +88,6 @@ const continents = {
         'ST',
         'SZ',
         'TD',
-        'TF',
         'TG',
         'TN',
         'TZ',
@@ -102,15 +101,12 @@ const continents = {
         'AE',
         'AF',
         'AM',
-        'AP', // Generic "Asia-Pacific" country code for region
         'AZ',
         'BD',
         'BH',
         'BN',
         'BT',
-        'CC',
         'CN',
-        'CX',
         'CY',
         'EG',
         'GE',
@@ -154,8 +150,6 @@ const continents = {
         'TW',
         'UZ',
         'VN',
-        'XD',
-        'XS',
         'YE',
     ],
     europe: [
@@ -176,7 +170,6 @@ const continents = {
         'DK',
         'EE',
         'ES',
-        'EU', // Generic "Europe" country code for region
         'FI',
         'FO',
         'FR',
@@ -211,13 +204,11 @@ const continents = {
         'RU',
         'SE',
         'SI',
-        'SJ',
         'SK',
         'SM',
         'TR',
         'UA',
         'VA',
-        'XK',
     ],
     'north-america': [
         'AG',
@@ -257,7 +248,6 @@ const continents = {
         'SX',
         'TC',
         'TT',
-        'UM',
         'US',
         'VC',
         'VG',
@@ -280,17 +270,14 @@ const continents = {
         'NZ',
         'PF',
         'PG',
-        'PN',
         'PW',
         'SB',
         'TK',
         'TO',
         'TV',
-        'UM',
         'VU',
         'WF',
         'WS',
-        'XX',
     ],
     'south-america': [
         'AR',
@@ -320,22 +307,59 @@ const makeIpSet = (name, cidr) => {
     });
 };
 
-const directory = `country-ip-blocks/ipv${options.ipVersion}`;
-
 (async () => {
-    // Read the files as written by the shell script that merges everything from the git repo
-    const text = await readFile(`sorted-from-git-ipv${options.ipVersion}.txt`, { encoding: 'utf8' } );
-    const lines = text.split('\n');
-    for (const line of lines) {
-        // Parse each line and add the CIDR to the country's array of CIDRs
-        const [countryCode, cidr] = line.split('\t');
-        if (countryCode && cidr) {
-            if (cidrList[countryCode]) {
-                cidrList[countryCode].push(cidr);
-            } else {
-                cidrList[countryCode] = [cidr];
-            }
+    // Read the per-country JSON files directly from the ipverse submodule
+    const family = options.ipVersion === '6' ? 'ipv6' : 'ipv4';
+
+    let countryDirs;
+    try {
+        countryDirs = await readdir('country-ip-blocks/country');
+    } catch (err) {
+        process.stderr.write(
+            `Error: cannot read country-ip-blocks/country (${err.code ?? err.message}).\n` +
+            `Expected layout: country-ip-blocks/country/<CC>/aggregated.json (ipverse format).\n` +
+            `This tool must be run from a directory containing a clone of\n` +
+            `https://github.com/ipverse/country-ip-blocks as a subdirectory named country-ip-blocks.\n` +
+            `Existing servers must re-clone: cd /var/opt/ipset-creator && rm -rf country-ip-blocks && git clone https://github.com/ipverse/country-ip-blocks\n`
+        );
+        process.exit(1);
+    }
+
+    countryDirs.sort();
+
+    let successCount = 0;
+    for (const cc of countryDirs) {
+        const jsonPath = `country-ip-blocks/country/${cc}/aggregated.json`;
+        let data;
+        try {
+            data = JSON.parse(await readFile(jsonPath, { encoding: 'utf8' }));
+        } catch (err) {
+            process.stderr.write(`Warning: failed to read ${jsonPath} (${err.message}) — skipping ${cc.toUpperCase()}\n`);
+            continue;
         }
+        successCount++;
+        const prefixes = (data.prefixes && data.prefixes[family]) || [];
+        if (prefixes.length === 0) {
+            continue; // skip countries with no data for this IP family
+        }
+        const countryCode = data.countryCode;
+        if (cidrList[countryCode]) {
+            cidrList[countryCode].push(...prefixes);
+        } else {
+            cidrList[countryCode] = [...prefixes];
+        }
+    }
+
+    if (countryDirs.length > 0 && successCount === 0) {
+        process.stderr.write(`Error: every country JSON read failed — aborting.\n`);
+        process.exit(1);
+    }
+
+    // Drift detection: warn if any loaded country code belongs to no continent table (AQ is expected)
+    const allContinentCodes = new Set(Object.values(continents).flat());
+    const driftCodes = Object.keys(cidrList).filter(code => code !== 'AQ' && !allContinentCodes.has(code));
+    if (driftCodes.length > 0) {
+        process.stderr.write(`Notice: the following country codes are in the data but assigned to no continent table: ${driftCodes.sort().join(', ')}\n`);
     }
 
     // Merge CIDRs for each continent, possibly combining them when adjacent
